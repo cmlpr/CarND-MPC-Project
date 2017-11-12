@@ -3,6 +3,11 @@ Self-Driving Car Engineer Nanodegree Program
 
 ---
 
+[Link to recording](https://youtu.be/bFIMydrKyGk)
+
+![alt text](https://github.com/cmlpr/CarND-MPC-Project/Screenshot.png "Simulator Screenshot")
+
+
 ## Dependencies
 
 * cmake >= 3.5
