@@ -38,15 +38,15 @@ The basic state update equations are:
 
 * `x2 = x1 + v1 * cos(psi1) * dt`
 * `y2 = y1 + v1 * sin(psi1) * dt`
-* `v2 = v1 + a * dt`
-* `psi2 = psi1 + (v1 / Lf) * delta * dt`
+* `v2 = v1 + a1 * dt`
+* `psi2 = psi1 + (v1 / Lf) * delta1 * dt`
 
 Here `Lf` is the distance between the front of the car and the center of gravity. This is often acquired by fixing the steering angle to a small angle (i.e. 1 degree) and measuring the radius of the circle created by the vehicle's motion. In this project `Lf = 2.67`. 
 
 In addition to the basic state equations, we have equations for the errors:
 
 * `cte1 = f(x1) - y1`
-* `epsi1 = psi0 - psi_desired`
+* `epsi1 = psi1 - psi_desired1`
 
 `f(x)` is the polynomial equation of the desired trajectory using a number of points (x, y) obtained from the simulator. In this project `f` is assigned a third order polynomial. 
 
@@ -57,6 +57,12 @@ In addition to the basic state equations, we have equations for the errors:
 `f'(x) = a + 2bx + 3cx^2`
 
 `psi_desired = tan-1 (f'(x))` 
+
+Finally we can define our error update functions as:
+
+* `cte2 = cte1 + (v1 * sin(epsi1) * dt)`
+
+* `epsi2 = epsi1 + ((v1 / Lf) * delta1 * dt)`
 
 ## MPC 
 
@@ -74,6 +80,7 @@ Objective function is defined in `FG_eval` class in `MPC.cpp` file. Each term in
 The duration over which future predictions are made is called prediction horizon `T`. Prediction horizon is defined by two parameters: 
 
 * `N`  : Number of time steps predicted by the MPC  
+
 * `dt` : Time elapsed between each control action 
 
 For the control of car motion, the prediction horizon should be a few seconds as the environment changes through that time frame. As the number of time steps increase, the number of variables and contraints in the optimization increases. This would increase the computation time and can cause the optimizer to come up with unrealistic solutions to fit to a large set of states. Time elapsed between each control action should be as small as possible to have a smoother control. It should however be larger than the cpu time required for the optimization. 
@@ -88,8 +95,9 @@ Increasing `N` to 25 and decreasing `dt` to 0.05 made the car very unstable at a
 
 100ms latency is handled by updating the position of the car using the velocity and the delay time. This allows us to make our predictions at a slightly future state. The equations below are incorporated in the `main.cpp` right after obtaining the current state from the simulator. 
 
-`x += v * cos(psi) * 0.1`
-`y += v * sin(psi) * 0.1`
+* `x += v * cos(psi) * 0.1`
+
+* `y += v * sin(psi) * 0.1`
 
 Note that this is a linear approximation of the future state using the velocity and delay time. 
 
