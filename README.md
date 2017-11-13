@@ -3,9 +3,95 @@ Self-Driving Car Engineer Nanodegree Program
 
 ---
 
-[Link to recording](https://youtu.be/bFIMydrKyGk)
+## Overview
 
 ![](./Screenshot.png "Simulator Screenshot")
+
+[Link to recording](https://youtu.be/bFIMydrKyGk)
+
+The goal of this project is to control the car's steering angle and acceleration to keep it in the track using model predictive control (MPC). The controller which is implemented in C++ communicates with the simulator developed by Udacity. It is designed to handle 100ms latency in the system. 
+
+## Vehicle Model
+
+A simple kinematic vehicle model has been implemented in this project. 
+
+### Vehicle State
+
+The vehicle's state is defined by
+
+* `x` and `y` : Position of the car
+* `psi` : Car's orientation
+* `v` : Car's velocity
+* `cte` : Cross track error
+* `epsi` : Orientation error
+
+### Controls 
+
+There are two actuators in this model
+
+* `delta` : steering angle (radians)
+* `a` : acceleration
+
+### Model Update Equations
+
+The basic state update equations are: 
+
+* `x2 = x1 + v1 * cos(psi1) * dt`
+* `y2 = y1 + v1 * sin(psi1) * dt`
+* `v2 = v1 + a * dt`
+* `psi2 = psi1 + (v1 / Lf) * delta * dt`
+
+Here `Lf` is the distance between the front of the car and the center of gravity. This is often acquired by fixing the steering angle to a small angle (i.e. 1 degree) and measuring the radius of the circle created by the vehicle's motion. In this project `Lf = 2.67`. 
+
+In addition to the basic state equations, we have equations for the errors:
+
+* `cte1 = f(x1) - y1`
+* `epsi1 = psi0 - psi_desired`
+
+`f(x)` is the polynomial equation of the desired trajectory using a number of points (x, y) obtained from the simulator. In this project `f` is assigned a third order polynomial. 
+
+`f(x) = ax + bx^2 + cx^3`
+
+`psi_desired` is the tangential angle of the polynomial `f` evaluated at position `x`. This requires evaluating the derivative of the polynomial `f'`
+
+`f'(x) = a + 2bx + 3cx^2`
+
+`psi_desired = tan-1 (f'(x))` 
+
+## MPC 
+
+In the MPC method, we define a cost function that minimizes 
+
+* cross track error (cte) - this term makes sure that the car is on the trajectory
+* heading error (epsi) - this term is required to keep the orientation of the car aligned with the desired trajectory
+* deviation from reference velocity - adding this term in the cost function prevents stopping and keeps the speed at a desired level
+* difference between succesive control values (delta and acceleration) - required to have smooth state transition.
+
+Objective function is defined in `FG_eval` class in `MPC.cpp` file. Each term in the objective function is multiplied by a constant to increase/decrease its weight. These are hyperparameters that needs to be tuned for better convergence to optimum values. 
+
+### Timestep length and Elapsed time
+
+The duration over which future predictions are made is called prediction horizon `T`. Prediction horizon is defined by two parameters: 
+
+* `N`  : Number of time steps predicted by the MPC  
+* `dt` : Time elapsed between each control action 
+
+For the control of car motion, the prediction horizon should be a few seconds as the environment changes through that time frame. As the number of time steps increase, the number of variables and contraints in the optimization increases. This would increase the computation time and can cause the optimizer to come up with unrealistic solutions to fit to a large set of states. Time elapsed between each control action should be as small as possible to have a smoother control. It should however be larger than the cpu time required for the optimization. 
+
+For a fixed prediction horizon, as the reference speed increases, the `dt` should be decreased for a better control which would then increase the number of time steps `N`. 
+
+For this study, I found that `N = 10` and `dt = 0.125` worked well for a reference velocities of 50mph and 80mph.
+
+Increasing `N` to 25 and decreasing `dt` to 0.05 made the car very unstable at a range of reference velocities. This could be due to optimizer not finding optimum values with the given number of large time steps and selected weights in the cost function. 
+
+### Latency
+
+100ms latency is handled by updating the position of the car using the velocity and the delay time. This allows us to make our predictions at a slightly future state. The equations below are incorporated in the `main.cpp` right after obtaining the current state from the simulator. 
+
+`x += v * cos(psi) * 0.1`
+`y += v * sin(psi) * 0.1`
+
+Note that this is a linear approximation of the future state using the velocity and delay time. 
 
 
 ## Dependencies
